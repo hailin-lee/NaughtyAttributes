@@ -30,7 +30,7 @@ namespace NaughtyAttributes.Editor
         public override VisualElement CreatePropertyGUI()
         {
             InfoBoxAttribute infoBoxAttribute = (InfoBoxAttribute)attribute;
-            return new HelpBox(infoBoxAttribute.Text, infoBoxAttribute.Type);
+            return new HelpBox(infoBoxAttribute.Text, (HelpBoxMessageType) infoBoxAttribute.Type);
         }
 
         private float GetHelpBoxHeight()
@@ -44,21 +44,21 @@ namespace NaughtyAttributes.Editor
             return height;
         }
 
-        private void DrawInfoBox(Rect rect, string infoText, HelpBoxMessageType infoBoxType)
+        private void DrawInfoBox(Rect rect, string infoText, InfoBoxType infoBoxType)
         {
             MessageType messageType;
             switch (infoBoxType)
             {
-                case HelpBoxMessageType.None:
+                case InfoBoxType.None:
                     messageType = MessageType.None;
                     break;
-                case HelpBoxMessageType.Info:
+                case InfoBoxType.Info:
                     messageType = MessageType.Info;
                     break;
-                case HelpBoxMessageType.Warning:
+                case InfoBoxType.Warning:
                     messageType = MessageType.Warning;
                     break;
-                case HelpBoxMessageType.Error:
+                case InfoBoxType.Error:
                     messageType = MessageType.Error;
                     break;
                 default:

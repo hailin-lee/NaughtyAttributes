@@ -1,5 +1,7 @@
-﻿using UnityEditor;
+﻿using System;
+using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace NaughtyAttributes.Editor
 {
@@ -25,32 +27,42 @@ namespace NaughtyAttributes.Editor
             DrawInfoBox(infoBoxRect, infoBoxAttribute.Text, infoBoxAttribute.Type);
         }
 
+        public override VisualElement CreatePropertyGUI()
+        {
+            InfoBoxAttribute infoBoxAttribute = (InfoBoxAttribute)attribute;
+            return new HelpBox(infoBoxAttribute.Text, infoBoxAttribute.Type);
+        }
+
         private float GetHelpBoxHeight()
         {
             InfoBoxAttribute infoBoxAttribute = (InfoBoxAttribute)attribute;
             float minHeight = EditorGUIUtility.singleLineHeight * 2.0f;
+            var width = EditorGUIUtility.currentViewWidth;
             float desiredHeight = GUI.skin.box.CalcHeight(new GUIContent(infoBoxAttribute.Text), EditorGUIUtility.currentViewWidth);
             float height = Mathf.Max(minHeight, desiredHeight);
 
             return height;
         }
 
-        private void DrawInfoBox(Rect rect, string infoText, EInfoBoxType infoBoxType)
+        private void DrawInfoBox(Rect rect, string infoText, HelpBoxMessageType infoBoxType)
         {
-            MessageType messageType = MessageType.None;
+            MessageType messageType;
             switch (infoBoxType)
             {
-                case EInfoBoxType.Normal:
+                case HelpBoxMessageType.None:
+                    messageType = MessageType.None;
+                    break;
+                case HelpBoxMessageType.Info:
                     messageType = MessageType.Info;
                     break;
-
-                case EInfoBoxType.Warning:
+                case HelpBoxMessageType.Warning:
                     messageType = MessageType.Warning;
                     break;
-
-                case EInfoBoxType.Error:
+                case HelpBoxMessageType.Error:
                     messageType = MessageType.Error;
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(infoBoxType), infoBoxType, null);
             }
 
             NaughtyEditorGUI.HelpBox(rect, infoText, messageType);

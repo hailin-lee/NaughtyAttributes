@@ -1,8 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace NaughtyAttributes.Editor
 {
@@ -15,6 +18,7 @@ namespace NaughtyAttributes.Editor
         private IEnumerable<PropertyInfo> _nativeProperties;
         private IEnumerable<MethodInfo> _methods;
         private Dictionary<string, SavedBool> _foldouts = new Dictionary<string, SavedBool>();
+        List<Action> _refreshActions = new();
 
         protected virtual void OnEnable()
         {
@@ -33,10 +37,45 @@ namespace NaughtyAttributes.Editor
             ReorderableListPropertyDrawer.Instance.ClearCache();
         }
 
+        public override VisualElement CreateInspectorGUI()
+        {
+            GetSerializedProperties(ref _serializedProperties);
+        
+            bool anyNaughtyAttribute = _serializedProperties.Any(p => PropertyUtility.GetAttribute<INaughtyAttribute>(p) != null);
+            
+            var container = !anyNaughtyAttribute ? DrawDefaultInspector_UTK() : DrawSerializedProperties_UTK();
+            container.Add(DrawNonSerializedFields_UTK());
+            container.Add(DrawNativeProperties_UTK());
+            container.Add(DrawButtons_UTK());
+            // container.schedule.Execute(() =>
+            // {
+            //     serializedObject.ApplyModifiedProperties();
+            // }).Every(200);
+            RefreshNonSerializedFields();
+            container.schedule.Execute(RefreshNonSerializedFields).Every(200);
+            return container;
+        }
+
+        public VisualElement DrawDefaultInspector_UTK()
+        {
+            
+            var container = new VisualElement();
+            InspectorElement.FillDefaultInspector(container, serializedObject, this);
+            return container;
+        }
+
+        void RefreshNonSerializedFields()
+        {
+            foreach (var x in _refreshActions)
+            {
+                x.Invoke();
+            }
+        }
+
         public override void OnInspectorGUI()
         {
             GetSerializedProperties(ref _serializedProperties);
-
+        
             bool anyNaughtyAttribute = _serializedProperties.Any(p => PropertyUtility.GetAttribute<INaughtyAttribute>(p) != null);
             if (!anyNaughtyAttribute)
             {
@@ -46,7 +85,7 @@ namespace NaughtyAttributes.Editor
             {
                 DrawSerializedProperties();
             }
-
+        
             DrawNonSerializedFields();
             DrawNativeProperties();
             DrawButtons();
@@ -66,6 +105,71 @@ namespace NaughtyAttributes.Editor
                     while (iterator.NextVisible(false));
                 }
             }
+        }
+
+        VisualElement DrawSerializedProperties_UTK()
+        {
+             serializedObject.Update();
+             var container = new VisualElement();
+ 
+             // Draw non-grouped serialized properties
+             foreach (var property in GetNonGroupedProperties(_serializedProperties))
+             {
+                 if (property.name.Equals("m_Script", System.StringComparison.Ordinal))
+                 {
+                     var pf = new PropertyField(property);
+                     pf.SetEnabled(false);
+                     container.Add(pf);
+                 }
+                 else
+                 {
+                     container.Add(new PropertyField(property));
+                 }
+             }
+ 
+             // Draw grouped serialized properties
+             foreach (var group in GetGroupedProperties(_serializedProperties))
+             {
+                 IEnumerable<SerializedProperty> visibleProperties = group.Where(p => PropertyUtility.IsVisible(p));
+                 if (!visibleProperties.Any())
+                 {
+                     continue;
+                 }
+
+                 var box = new Box();
+                 container.Add(box);
+                 box.Add(new Label(group.Key));
+                 foreach (var property in visibleProperties)
+                 {
+                     box.Add(new PropertyField(property));
+                 }
+             }
+ 
+             // Draw foldout serialized properties
+             foreach (var group in GetFoldoutProperties(_serializedProperties))
+             {
+                 IEnumerable<SerializedProperty> visibleProperties = group.Where(p => PropertyUtility.IsVisible(p));
+                 if (!visibleProperties.Any())
+                 {
+                     continue;
+                 }
+ 
+                 if (!_foldouts.ContainsKey(group.Key))
+                 {
+                     _foldouts[group.Key] = new SavedBool($"{target.GetInstanceID()}.{group.Key}", false);
+                 }
+
+                 var foldout = new Foldout();
+                 container.Add(foldout);
+                 foldout.value = _foldouts[group.Key].Value;
+                 foldout.RegisterValueChangedCallback(evt => _foldouts[group.Key].Value = evt.newValue);
+                 foreach (var property in visibleProperties)
+                 {
+                     foldout.Add(new PropertyField(property));
+                 }
+             }
+             
+             return container;
         }
 
         protected void DrawSerializedProperties()
@@ -133,6 +237,25 @@ namespace NaughtyAttributes.Editor
             serializedObject.ApplyModifiedProperties();
         }
 
+        VisualElement DrawNonSerializedFields_UTK(bool drawHeader = false)
+        {
+            var container = new VisualElement();
+             if (_nonSerializedFields.Any())
+             {
+                 if (drawHeader)
+                 {
+                     container.Add(new Label());
+                     container.Add(new Label("Non-Serialized Fields"));
+                 }
+ 
+                 foreach (var field in _nonSerializedFields)
+                 {
+                     container.Add(NaughtyEditorUTK.NonSerializedField_Layout(serializedObject.targetObject, field, _refreshActions));
+                 }
+             }
+             return container;
+        }
+
         protected void DrawNonSerializedFields(bool drawHeader = false)
         {
             if (_nonSerializedFields.Any())
@@ -152,6 +275,25 @@ namespace NaughtyAttributes.Editor
             }
         }
 
+        VisualElement DrawNativeProperties_UTK(bool drawHeader = false)
+        {
+            var container = new VisualElement();
+             if (_nativeProperties.Any())
+             {
+                 if (drawHeader)
+                 {
+                     container.Add(new Label());
+                     container.Add(new Label("Native Properties"));
+                 }
+ 
+                 foreach (var property in _nativeProperties)
+                 {
+                     container.Add(NaughtyEditorUTK.NativeProperty_Layout(serializedObject.targetObject, property, _refreshActions));
+                 }
+             }
+             return container;
+        }
+
         protected void DrawNativeProperties(bool drawHeader = false)
         {
             if (_nativeProperties.Any())
@@ -169,6 +311,25 @@ namespace NaughtyAttributes.Editor
                     NaughtyEditorGUI.NativeProperty_Layout(serializedObject.targetObject, property);
                 }
             }
+        }
+
+        VisualElement DrawButtons_UTK(bool drawHeader = false)
+        {
+            var container = new VisualElement();
+            if (_methods.Any())
+            {
+                if (drawHeader)
+                {
+                    container.Add(new Label());
+                    container.Add(new Label("Buttons"));
+                }
+
+                foreach (var method in _methods)
+                {
+                    container.Add(NaughtyEditorUTK.Button(serializedObject.targetObject, method, _refreshActions));
+                }
+            }
+            return container;
         }
 
         protected void DrawButtons(bool drawHeader = false)

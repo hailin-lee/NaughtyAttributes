@@ -1,0 +1,9 @@
+publish:
+  stage: deploy
+  only:
+    - tags
+  script: 
+    - npm config -g set cafile "/etc/gitlab-runner/certs/ca.crt"
+    - echo //$VERDACCIO_DOMAIN/:_authToken=$VERDACCIO_AUTH_TOKEN > .npmrc
+    - npm publish Assets/NaughtyAttributes/ --registry=$VERDACCIO_URL
+

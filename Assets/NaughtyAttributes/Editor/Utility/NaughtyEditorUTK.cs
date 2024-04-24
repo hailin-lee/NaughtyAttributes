@@ -69,7 +69,7 @@ namespace NaughtyAttributes.Editor
                     object[] defaultParams = methodInfo.GetParameters().Select(p => p.DefaultValue).ToArray();
                     IEnumerator methodResult = methodInfo.Invoke(target, defaultParams) as IEnumerator;
 
-                    if (!Application.isPlaying)
+                    if (!Application.isPlaying && target != null)
                     {
                         // Set target object and scene dirty to serialize changes to disk
                         EditorUtility.SetDirty(target);

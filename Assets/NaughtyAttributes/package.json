@@ -1,7 +1,7 @@
 {
   "name": "com.dyngames.naughtyattributes",
   "displayName": "Naughty Attributes",
-  "version": "2.1.5-1",
+  "version": "2.1.5-2",
   "unity": "2022.1",
   "description": "NaughtyAttributes is an extension for the Unity Inspector.",
   "keywords": [ "attribute", "inspector", "editor" ],

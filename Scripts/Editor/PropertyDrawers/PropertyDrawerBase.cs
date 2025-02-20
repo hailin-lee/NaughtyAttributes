@@ -1,5 +1,7 @@
 ﻿using UnityEditor;
+
 using UnityEngine;
+
 
 namespace NaughtyAttributes.Editor
 {
@@ -60,6 +62,7 @@ namespace NaughtyAttributes.Editor
             SpecialCaseDrawerAttribute specialCaseAttribute = PropertyUtility.GetAttribute<SpecialCaseDrawerAttribute>(property);
             if (specialCaseAttribute != null)
             {
+                Debug.Log($"drawer: {specialCaseAttribute.GetDrawer()}");
                 return specialCaseAttribute.GetDrawer().GetPropertyHeight(property);
             }
 
